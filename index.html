@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Navegue pelas páginas do Engecalc.">
+  <title>Engecalc | Páginas</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f3f6fb;
+      font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    .site-header {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      padding: 16px 28px;
+      background: #123b70;
+      color: #fff;
+      box-shadow: 0 2px 8px #10294933;
+    }
+    .site-header h1 { margin: 0; font-size: 1.5rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: calc(100vh - 76px);
+    }
+    .sidebar {
+      padding: 24px 16px;
+      background: #fff;
+      border-right: 1px solid #dce3ed;
+    }
+    .sidebar h2 { margin: 0 8px 16px; font-size: 1.05rem; }
+    #page-menu { display: grid; gap: 6px; }
+    .page-link {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #24466f;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+    .page-link:hover, .page-link:focus-visible { background: #edf4fc; outline: none; }
+    .page-link[aria-current="page"] { background: #e3efff; color: #123b70; font-weight: 650; }
+    .content { min-width: 0; padding: 24px; }
+    .content h2 { margin: 0 0 16px; font-size: 1.25rem; }
+    #page-status { color: #536176; }
+    #page-frame {
+      display: none;
+      width: 100%;
+      height: calc(100vh - 160px);
+      min-height: 420px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      background: #fff;
+    }
+    @media (max-width: 700px) {
+      .site-header { min-height: 64px; padding: 14px 18px; }
+      .layout { grid-template-columns: 1fr; min-height: calc(100vh - 64px); }
+      .sidebar { border-right: 0; border-bottom: 1px solid #dce3ed; padding: 18px 14px; }
+      #page-menu { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+      .content { padding: 18px 14px; }
+      #page-frame { height: 65vh; min-height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Engecalc</h1>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Navegação">
+      <h2>Menu de Opções</h2>
+      <nav id="page-menu" aria-label="Páginas disponíveis"></nav>
+    </aside>
+    <main class="content">
+      <h2 id="current-title">Páginas</h2>
+      <p id="page-status" role="status" aria-live="polite">Carregando páginas…</p>
+      <iframe id="page-frame" title="Conteúdo da página selecionada"></iframe>
+    </main>
+  </div>
+  <script>
+    // O diretório Paginas é lido pela API pública do GitHub para manter o menu atualizado.
+    const repositoryContents = "https://api.github.com/repos/engecalc-design/engecalc/contents/Paginas?ref=main";
+    const pagesBase = "Paginas/";
+    const menu = document.getElementById("page-menu");
+    const status = document.getElementById("page-status");
+    const frame = document.getElementById("page-frame");
+    const title = document.getElementById("current-title");
+
+    function openPage(file, link) {
+      const pageName = file.replace(/\.htm$/i, "");
+      title.textContent = pageName;
+      status.hidden = true;
+      frame.style.display = "block";
+      frame.src = pagesBase + encodeURIComponent(file);
+      menu.querySelectorAll("a").forEach((item) => {
+        item.removeAttribute("aria-current");
+      });
+      link.setAttribute("aria-current", "page");
+    }
+
+    async function loadPages() {
+      try {
+        const response = await fetch(repositoryContents, {
+          headers: { Accept: "application/vnd.github+json" }
+        });
+        if (!response.ok) throw new Error(`GitHub respondeu com status ${response.status}`);
+        const entries = await response.json();
+        const pages = entries
+          .filter((entry) => entry.type === "file" && /\.htm$/i.test(entry.name))
+          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+        if (pages.length === 0) {
+          status.textContent = "Nenhum arquivo .htm foi encontrado na pasta Paginas.";
+          return;
+        }
+
+        status.remove();
+        pages.forEach((page, index) => {
+          const link = document.createElement("a");
+          link.className = "page-link";
+          link.href = `${pagesBase}${encodeURIComponent(page.name)}`;
+          link.textContent = page.name.replace(/\.htm$/i, "");
+          link.addEventListener("click", (event) => {
+            event.preventDefault();
+            openPage(page.name, link);
+          });
+          menu.appendChild(link);
+          if (index === 0) openPage(page.name, link);
+        });
+      } catch (error) {
+        status.textContent = "Não foi possível carregar as páginas. Verifique se a pasta Paginas existe e tente novamente.";
+        console.error("Falha ao carregar o menu de páginas:", error);
+      }
+    }
+
+    loadPages();
+  </script>
+</body>
+</html>
